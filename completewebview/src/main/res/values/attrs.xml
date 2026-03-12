@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="CompleteWebView">
+        <attr name="enableJavaScript" format="boolean" />
+        <attr name="autoHandlePermissions" format="boolean" />
+        <attr name="showLoadingProgressBar" format="boolean" />
+    </declare-styleable>
+</resources>
