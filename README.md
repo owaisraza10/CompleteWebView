@@ -27,8 +27,8 @@ Enhanced WebView component for Android that works as intended out of the box, fe
 
     ```kotlin
     dependencies {
-        implementation("com.github.YOUR_GITHUB_USERNAME:CompleteWebView:1.0.0")
-    }
+	        implementation 'com.github.owaisraza10:CompleteWebView:1.0.0'
+	}
     ```
 
 ## Usage
