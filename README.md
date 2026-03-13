@@ -2,6 +2,12 @@
 
 Enhanced WebView component for Android that works as intended out of the box, featuring a modern, chainable Fluent API.
 
+## ✨ New in v1.0.1
+* **Predictive Back Support:** Fully compatible with Android 14+ system back gestures via `.setupPredictiveBack()`.
+* **Domain Whitelisting:** Lock your WebView to specific domains for better security.
+* **Fragment Ready:** Fixed context issues so fullscreen video and permissions work perfectly inside Fragments.
+* **Architecture Upgrade:** Resolved Gradle cache and manifest merger conflicts.
+
 ## Requirements
 
 * Android 5.0+ (API level 21+)
