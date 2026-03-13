@@ -45,5 +45,9 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+<<<<<<< HEAD
+=======
+//    implementation("com.github.owaisraza10:CompleteWebView:1.0.0")
+>>>>>>> 629a176 (Release v1.0.1: Predictive Back support, URL Whitelist, and Fragment context fixes)
     implementation(project(":completewebview"))
 }

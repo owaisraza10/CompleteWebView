@@ -1,19 +1,41 @@
 package com.owaisraza.completewebview
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
 import android.util.AttributeSet
 import android.view.Gravity
 import android.webkit.*
 import android.widget.FrameLayout
+import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 
 class CompleteWebView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : WebView(context, attrs, defStyleAttr) {
+
+    private fun getActivityFromContext(): Activity? {
+        var currentContext = context
+        while (currentContext is ContextWrapper) {
+            if (currentContext is Activity) {
+                return currentContext
+            }
+            currentContext = currentContext.baseContext
+        }
+        return null
+    }
+
+    private val blockedHostnames = mutableListOf<String>()
+
+    fun addBlockedHostname(hostname: String): CompleteWebView {
+        blockedHostnames.add(hostname)
+        return this
+    }
 
     // --- CALLBACK LAMBDAS (AdvancedWebView Feature) ---
     var onPageStarted: ((url: String?) -> Unit)? = null
@@ -334,6 +356,16 @@ class CompleteWebView @JvmOverloads constructor(
         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
             val url = request?.url?.toString() ?: return false
 
+            // HOSTNAME BLACKLIST CHECK
+            if (blockedHostnames.isNotEmpty()) {
+                val host = request.url?.host ?: ""
+                val isBlocked = blockedHostnames.any { host == it || host.endsWith(".$it") }
+                if (isBlocked) {
+                    onExternalPageRequest?.invoke(url) // Trigger the callback
+                    return true // Block the load
+                }
+            }
+
             // HOSTNAME RESTRICTION CHECK
             if (permittedHostnames.isNotEmpty()) {
                 val host = request.url?.host ?: ""
@@ -407,6 +439,12 @@ class CompleteWebView @JvmOverloads constructor(
         """.trimIndent()
             view?.evaluateJavascript(js, null)
         }
+
+        override fun doUpdateVisitedHistory(view: WebView?, url: String?, isReload: Boolean) {
+            super.doUpdateVisitedHistory(view, url, isReload)
+            // Tell the back button to re-evaluate whether it should be active!
+            updateBackState()
+        }
     }
 
     private inner class CompleteWebChromeClient : WebChromeClient() {
@@ -447,7 +485,7 @@ class CompleteWebView @JvmOverloads constructor(
             customViewCallback = callback
 
             // Find the absolute root window of the app and paste the video on top
-            val activity = context as? android.app.Activity
+            val activity = getActivityFromContext()
             val decorView = activity?.window?.decorView as? FrameLayout
             decorView?.addView(customView, FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -460,7 +498,7 @@ class CompleteWebView @JvmOverloads constructor(
         }
 
         override fun onPermissionRequest(request: PermissionRequest?) {
-            val activity = context as? android.app.Activity ?: return
+            val activity = getActivityFromContext() ?: return
 
             // Check if the app actually has hardware permissions
             val hasCamera = androidx.core.content.ContextCompat.checkSelfPermission(
@@ -482,7 +520,7 @@ class CompleteWebView @JvmOverloads constructor(
         override fun onHideCustomView() {
             super.onHideCustomView()
 
-            val activity = context as? android.app.Activity
+            val activity = getActivityFromContext()
             val decorView = activity?.window?.decorView as? FrameLayout
             decorView?.removeView(customView)
 
@@ -503,5 +541,29 @@ class CompleteWebView @JvmOverloads constructor(
         fun postMessage(message: String) {
             post { onWebMessageReceived?.invoke(message) }
         }
+    }
+
+    // --- PREDICTIVE BACK SUPPORT ---
+    private var backPressCallback: OnBackPressedCallback? = null
+
+    fun setupPredictiveBack(activity: ComponentActivity): CompleteWebView {
+        backPressCallback = object : OnBackPressedCallback(false) { // Starts disabled
+            override fun handleOnBackPressed() {
+                // If video is fullscreen, close it. Otherwise, go back in history.
+                if (customView != null) {
+                    webChromeClient?.onHideCustomView()
+                } else {
+                    handleBackPress()
+                }
+                updateBackState()
+            }
+        }
+        activity.onBackPressedDispatcher.addCallback(activity, backPressCallback!!)
+        return this
+    }
+
+    internal fun updateBackState() {
+        // Enable the callback only if we can go back OR a video is playing fullscreen
+        backPressCallback?.isEnabled = this.canGoBack() || customView != null
     }
 }
